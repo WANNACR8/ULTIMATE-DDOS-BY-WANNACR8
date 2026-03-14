@@ -1,4 +1,4 @@
-# ULTIMATE-DDOS-BY-WANNACR8
+#Ultimate stress test
 ⚠️ MADE FOR TRAINING AND EDUCATIONAL PURPOSES ⚠️
 ⚠️ ⚠️
 ⚠️This tool is created exclusively for: ⚠️
